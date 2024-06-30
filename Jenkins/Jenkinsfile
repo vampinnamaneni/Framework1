@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+    }
+
+    parameters {
+        string(name: 'EC2_NAME', defaultValue: '', description: 'Name of the EC2 instance')
+        string(name: 'EC2_SIZE', defaultValue: 't2.micro', description: 'Type of the EC2 instance')
+        string(name: 'SSH_KEY_PATH', defaultValue: '', description: 'Path to the SSH private key file')
+        string(name: 'APP_ID', defaultValue: '', description: 'Application ID')
+        string(name: 'APP_NAME', defaultValue: '', description: 'Application Name')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/vampinnamaneni/Framework1.git', branch: 'main'
+            }
+        }
+        stage('Initialise Terraform') {
+            steps {
+                script {
+                    dir('terraform') {
+                        sh 'terraform init'
+                    }
+                }
+            }
+        }
+
+        stage('Plan Terraform') {
+            steps {
+                script {
+                    dir('terraform') {
+                        sh """
+                        terraform plan -var "instance_name=${params.EC2_NAME}" \
+                                       -var "instance_type=${params.EC2_TYPE}" \
+                                       -var "ami_id=ami-0cb3193ac3a1520ce" \
+                                       -var "key_name=your_key_pair_name" \
+                                       -var "ssh_key_path=${params.SSH_KEY_PATH}" \
+                                       -var "app_id=${params.APP_ID}" \
+                                       -var "app_name=${params.APP_NAME}"
+                        """
+                    }
+                }
+            }
+        }
+        stage('Apply Terraform') {
+            steps {
+                script {
+                    dir('terraform') {
+                        sh """
+                        terraform apply -auto-approve -var "instance_name=${params.EC2_NAME}" \
+                                                    -var "instance_type=${params.EC2_TYPE}" \
+                                                    -var "ami_id=ami-0cb3193ac3a1520ce" \
+                                                    -var "key_name=your_key_pair_name" \
+                                                    -var "ssh_key_path=${params.SSH_KEY_PATH}" \
+                                                    -var "app_id=${params.APP_ID}" \
+                                                    -var "app_name=${params.APP_NAME}"
+                        """
+                    }
+                }
+            }
+        }
+    }
+}
